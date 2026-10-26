@@ -1,4 +1,4 @@
-cat << 'EOF' > /tmp/qt_launch.sh
+cat << 'EOF' > /root/qt_launch.sh
 #!/bin/bash
 export XDG_CONFIG_HOME=/tmp/.config
 export XDG_DATA_HOME=/tmp/.local/share
@@ -9,7 +9,6 @@ export QT_QPA_PLATFORM=xcb
 openbox &
 sleep 2
 
-# Launch the QtLauncher instead of the ImGui UI
 /opt/shadps4/shadPS4QtLauncher-qt.AppImage
 EOF
-chmod +x /tmp/qt_launch.sh
+chmod +x /root/qt_launch.sh
