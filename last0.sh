@@ -1,4 +1,4 @@
-cat << 'EOF' > /root/qt_launch.sh
+cat << 'EOF' > /root/run_sdl.sh
 #!/bin/bash
 export XDG_CONFIG_HOME=/tmp/.config
 export XDG_DATA_HOME=/tmp/.local/share
@@ -9,6 +9,7 @@ export QT_QPA_PLATFORM=xcb
 openbox &
 sleep 2
 
-/opt/shadps4/shadPS4QtLauncher-qt.AppImage
+# Launch the 33MB SDL AppImage directly with the game
+/opt/shadps4/shadps4 --game /mnt/games/PS4/eboot.bin
 EOF
-chmod +x /root/qt_launch.sh
+chmod +x /root/run_sdl.sh
