@@ -1,48 +1,49 @@
 #!/bin/bash
 
-echo "=== [1/5] Cleaning up ==="
+echo "=== [1/6] Cleaning up old processes ==="
 pkill -9 shadps4 2>/dev/null || true
 pkill -9 Xorg 2>/dev/null || true
 
-echo "=== [2/5] Setting up 4GB RAM disk ==="
+echo "=== [2/6] Setting up 4GB RAM disk for /tmp ==="
 umount /tmp 2>/dev/null || true
 rm -rf /tmp/*
 mount -t tmpfs -o size=4G tmpfs /tmp
 
-echo "=== [3/5] Mounting GAMES drive (Forced) ==="
+echo "=== [3/6] Mounting GAMES drive ==="
 umount /mnt/games 2>/dev/null || true
 mkdir -p /mnt/games
-# Force mount /dev/nvme0n1p6
-mount -t ntfs3 -o ro /dev/nvme0n1p6 /mnt/games
-if [ $? -ne 0 ]; then
-    echo "CRITICAL ERROR: Failed to mount /dev/nvme0n1p6 to /mnt/games!"
-    echo "Cannot continue."
+GAMES_DEV=$(blkid -L GAMES)
+if [ -z "$GAMES_DEV" ]; then
+    echo "CRITICAL ERROR: Could not find partition labeled GAMES."
     exit 1
 fi
-echo "Drive mounted successfully."
+mount -t ntfs3 -o ro "$GAMES_DEV" /mnt/games
+echo "Mounted $GAMES_DEV to /mnt/games"
 
-echo "=== [4/5] Fixing Symlinks ==="
+echo "=== [4/6] COPYING Firmware (Bypasses sandbox issues) ==="
 rm -rf /root/.config/shadps4/sys_modules
-mkdir -p /root/.config/shadps4
-ln -sfn /mnt/games/sys_modules /root/.config/shadps4/sys_modules
+mkdir -p /root/.config/shadps4/sys_modules
+# Copy the files instead of linking
+cp -r /mnt/games/sys_modules/* /root/.config/shadps4/sys_modules/ 2>/dev/null
+echo "Firmware files copied: $(ls /root/.config/shadps4/sys_modules/ | wc -l) files."
 
-# Verify the symlink works before launching
-if [ ! -d "/root/.config/shadps4/sys_modules" ]; then
-    echo "CRITICAL ERROR: Firmware link is broken. The folder /mnt/games/sys_modules does not exist."
-    exit 1
-fi
-
+echo "=== [5/6] Linking Games & Clearing Logs ==="
 rm -rf /root/.local/share/shadPS4/games
 mkdir -p /root/.local/share/shadPS4
 ln -sfn /mnt/games/PS4 /root/.local/share/shadPS4/games
+rm -f /root/.local/share/shadPS4/log/shadps4.log
 
-echo "=== [5/5] Launching UI ==="
+echo "=== [6/6] Launching UI (Intel Graphics) ==="
 export APPIMAGE_EXTRACT_AND_RUN=1
 export XDG_RUNTIME_DIR=/tmp
 export QT_QPA_PLATFORM=xcb
 export DISPLAY=:0
-export __NV_PRIME_RENDER_OFFLOAD=1
-export __VK_LAYER_NV_optimus=NVIDIA_only
-export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json:/usr/share/vulkan/icd.d/intel_icd.json
 
+# Launch using xinit (the most reliable method)
 xinit /opt/shadps4/shadps4 -b
+
+# If the UI closes/crashes, print the log
+echo "=================================================="
+echo "UI CLOSED. HERE IS THE FRESH LOG:"
+echo "=================================================="
+cat /root/.local/share/shadPS4/log/shadps4.log 2>/dev/null || echo "Log file was not created."
