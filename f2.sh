@@ -1,38 +1,35 @@
-cat << 'EOF' > /mnt/games/LIVE_BOOT_STATE.txt
-======================================================
-LIVE USB STATE REPORT - SHADPS4 CONSOLE
-======================================================
+# Step 1: Verify the complete 64-bit NVIDIA proprietary rendering layout is in place
+echo "[+] Ensuring native NVIDIA runtime pipeline is fully present..."
+pacman -S --noconfirm nvidia-utils vulkan-icd-loader
 
-[1] WHY THE LIVE TEST FAILED (HARDWARE LIMITATION)
-- Error: "Device lost during submit!" (Vulkan crash)
-- Reason: The GTX 1050 is asleep. This Live ISO is missing the nvidia-580xx-dkms package.
-- The Intel iGPU tried to render 3D graphics for Limbo and crashed.
+# Step 2: Reconstruct the execution script targeting the discrete GPU layer
+cat << 'EOF' > /root/repair_and_launch.sh
+#!/bin/bash
+# High-Performance Bare-Metal shadPS4 Launch Wrapper (NVIDIA Force-Route)
 
-[2] PACKAGES MANUALLY INSTALLED ON LIVE USB
-- fuse2 (Required for AppImages)
-- xf86-input-libinput (Required for keyboard/mouse)
-- openbox (Window manager for focus)
-- xdotool (Used for scripting)
+GAME_PATH="/run/archiso/airootfs/run/archiso/bootmnt/PS4/Limbo_EUR/CUSA01369/eboot.bin"
+EMULATOR_BIN="/usr/bin/shadps4"
 
-[3] THE EXACT XORG INPUT CONFIG (/etc/X11/xorg.conf.d/10-libinput.conf)
+echo "[+] Constructing explicit X11 execution map targeting NVIDIA Prime offload..."
+cat << XINIT > /root/.xinitrc
+#!/bin/sh
+# Force the Vulkan loader to directly talk only to the NVIDIA proprietary ICD profile
+export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.json
+
+# Inject complete NVIDIA Prime hardware offload rendering variables
+export __NV_PRIME_RENDER_OFFLOAD=1
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
+export __VK_LAYER_NV_optimus=NVIDIA_only
+
+# Execute the binary wrapper cleanly with explicit boolean tracking strings
+exec $EMULATOR_BIN --fullscreen true --game "$GAME_PATH"
+XINIT
+
+chmod +x /root/.xinitrc
+
+echo "[+] Spawning dedicated display pipeline on server target :1..."
+startx /root/.xinitrc -- :1
 EOF
-cat /etc/X11/xorg.conf.d/10-libinput.conf >> /mnt/games/LIVE_BOOT_STATE.txt
 
-echo -e "\n[4] THE FINAL LAUNCH SCRIPT (/root/run_sdl.sh)" >> /mnt/games/LIVE_BOOT_STATE.txt
-cat /root/run_sdl.sh >> /mnt/games/LIVE_BOOT_STATE.txt
-
-echo -e "\n[5] GAME DIRECTORY STRUCTURE (/mnt/games/PS4)" >> /mnt/games/LIVE_BOOT_STATE.txt
-ls -la /mnt/games/PS4/ >> /mnt/games/LIVE_BOOT_STATE.txt
-
-echo -e "\n[6] MISSING GAME FILES DETECTED BY EMULATOR" >> /mnt/games/LIVE_BOOT_STATE.txt
-echo "The eboot.bin requested: libbo_boot.pkgps4, settings.txt, textures/white.png" >> /mnt/games/LIVE_BOOT_STATE.txt
-echo "These were NOT found in the game folder. The game dump is incomplete." >> /mnt/games/LIVE_BOOT_STATE.txt
-
-echo -e "\n[7] VULKAN STATUS" >> /mnt/games/LIVE_BOOT_STATE.txt
-vulkaninfo --summary >> /mnt/games/LIVE_BOOT_STATE.txt 2>&1
-
-echo "======================================================"
-echo "REPORT GENERATED SUCCESSFULLY."
-echo "Saved to: /mnt/games/LIVE_BOOT_STATE.txt"
-echo "======================================================"
-EOF
+# Step 3: Clear any lingering execution locks and fire the vector
+chmod +x /root/repair_and_launch.sh && /root/repair_and_launch.sh
